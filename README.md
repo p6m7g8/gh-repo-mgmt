@@ -13,13 +13,6 @@
     - [Aliases](#aliases)
     - [Functions](#functions)
   - [Examples](#examples)
-    - [Create a new ruleset](#create-a-new-ruleset)
-    - [Show an existing ruleset](#show-an-existing-ruleset)
-    - [Activate or deactivate](#activate-or-deactivate)
-    - [Delete](#delete)
-    - [Update simple toggles](#update-simple-toggles)
-    - [Update parameterized rules](#update-parameterized-rules)
-    - [Update status checks](#update-status-checks)
   - [Hierarchy](#hierarchy)
   - [Contributing](#contributing)
   - [Code of Conduct](#code-of-conduct)
@@ -37,14 +30,6 @@
 
 ## Summary
 
-`gh-repo-mgmt` is a portable, GitHub CLI extension for managing **branch rulesets** directly from the command line.
-
-It wraps the [GitHub REST API v3](https://docs.github.com/en/rest/repos/rules?apiVersion=2022-11-28) for repository rulesets and exposes simple subcommands to:
-- create, show, activate, deactivate, or delete branch rulesets
-- toggle individual rule types (`required_signatures`, `non_fast_forward`, `merge_queue`, etc.)
-- set or modify parameters for multi-argument rules like `pull_request`, `merge_queue`, and `copilot_code_review`
-- update rule parameters dynamically using a declarative `<rule>.<param>=<value>` syntax
-
 ---
 
 ## Installation
@@ -60,7 +45,7 @@ It wraps the [GitHub REST API v3](https://docs.github.com/en/rest/repos/rules?ap
    ```
 3. Confirm the extension is working:
    ```bash
-   gh ruleset-branch help
+   gh repo-mgmt help
    ```
 
 ---
@@ -68,19 +53,16 @@ It wraps the [GitHub REST API v3](https://docs.github.com/en/rest/repos/rules?ap
 ## Usage
 
 ```text
-gh-repo-mgmt.zsh [options] <cmd> [<args>...]
+gh repo-mgmt [options] <cmd> [<args>...]
 ```
 
 ### Commands
 
 | Command | Description |
 |----------|-------------|
-| `activate <name>` | Activate a branch ruleset |
-| `create <name>` | Create a branch ruleset |
-| `deactivate <name>` | Deactivate a branch ruleset |
-| `delete <name>` | Delete a branch ruleset |
 | `show <name>` | Show a branch ruleset |
 | `update <name> <what>=<value>` | Update a branch ruleset |
+| `update_topics` <name> <topics>... | Update topics |
 
 ### Options
 
@@ -95,7 +77,7 @@ gh-repo-mgmt.zsh [options] <cmd> [<args>...]
 You can alias the script to shorten invocations:
 
 ```bash
-alias ghrb="gh ruleset-branch"
+alias ghut="gh update_topics"
 ```
 
 ---
@@ -105,67 +87,13 @@ alias ghrb="gh ruleset-branch"
 | Function | Purpose |
 |-----------|----------|
 | `p6_usage()` | Prints help text |
-| `p6_cmd_activate(name)` | Activates a ruleset |
-| `p6_cmd_deactivate(name)` | Deactivates a ruleset |
-| `p6_cmd_create(name)` | Creates a new ruleset |
-| `p6_cmd_delete(name)` | Deletes a ruleset |
-| `p6_cmd_show(name)` | Shows JSON for a ruleset |
-| `p6_cmd_update(name, ...)` | Updates or patches ruleset content |
+| `p6_cmd_show(name)` | Shows JSON for a repo |
+| `p6_cmd_update(name, ...)` | Updates |
+| `p6_cmd_update_topics(name, ...)` | Updates topics |
 
 ---
 
 ## Examples
-
-### Create a new ruleset
-
-```bash
-gh ruleset-branch create default
-```
-
-### Show an existing ruleset
-
-```bash
-gh ruleset-branch show default | jq
-```
-
-### Activate or deactivate
-
-```bash
-gh ruleset-branch activate default
-gh ruleset-branch deactivate default
-```
-
-### Delete
-
-```bash
-gh ruleset-branch delete default
-```
-
-### Update simple toggles
-
-```bash
-gh ruleset-branch update default required_signatures=enabled
-gh ruleset-branch update default required_signatures=disabled
-```
-
-### Update parameterized rules
-
-```bash
-# Update pull request approvals and stale-review behavior
-gh ruleset-branch update default pull_request.required_approving_review_count=2 pull_request.dismiss_stale_reviews_on_push=true
-
-# Adjust merge queue parameters
-gh ruleset-branch update default merge_queue.merge_method=SQUASH merge_queue.check_response_timeout_minutes=7
-
-# Enable Copilot code reviews
-gh ruleset-branch update default copilot_code_review.review_on_push=true copilot_code_review.review_draft_pull_requests=true
-```
-
-### Update status checks
-
-```bash
-gh ruleset-branch update default required_status_checks.context=build required_status_checks.integration_id=15368
-```
 
 ---
 
@@ -203,4 +131,3 @@ See [Code of Conduct](https://github.com//.github/blob/main/CODE_OF_CONDUCT.md).
 ## Author
 
 **Philip M. Gollucci** <pgollucci@p6m7g8.com>
-
