@@ -24,13 +24,17 @@ Usage:
   gh-repo-mgmt [options] <cmd> [<args>...]
 
 Commands:
-  show <name>                    Show a repository setup
-  update <name> <what>=<value>   Update a repository setup
+  show <name>                      Show a repository setup
+  update <name> <what>=<value>     Update a repository setup
+  update-topics <name> <topic>...  Update repository topics
 
 Options:
   -h                             Show this help message
 
 Examples:
+  gh-repo-mgmt show Gollucci/gh-repo-mgmt
+  gh-repo-mgmt update Gollucci/gh-repo-mgmt has_issues=true has_wiki=false
+  gh-repo-mgmt update_topics Gollucci/gh-repo-mgmt devops cli tool
 EOF
   exit "$rc"
 }
@@ -69,6 +73,7 @@ p6main() {
   help) p6_usage ;;
   show) ;;
   update) ;;
+  update_topics) ;;
   *) p6_usage 1 "invalid cmd" ;;
   esac
 
@@ -102,18 +107,6 @@ p6_cmd_show() {
   _gh --method GET repos/:owner/:repo
 }
 
-######################################################################
-#<
-#
-# Function: p6_cmd_update(name, ...)
-#
-#  Args:
-#	name -
-#	... - 
-#
-#  Environment:	 GET PARAMS PUT
-#>
-######################################################################
 ######################################################################
 #<
 #
@@ -156,6 +149,34 @@ p6_cmd_update() {
   echo "Updating $owner/$repo with: $payload" >&2
 
   _gh --method PATCH "repos/${owner}/${repo}" -f data="$payload"
+}
+
+######################################################################
+#<
+#
+# Function: p6_cmd_update_topics(name, topics...)
+#
+#  Args:
+#	name - repository in owner/repo form
+#	topics... - space-separated list of topics
+#
+#>
+######################################################################
+p6_cmd_update_topics() {
+  local name="$1"
+  shift 1
+
+  local owner="${name%%/*}"
+  local repo="${name##*/}"
+
+  local topics_json
+  topics_json=$(printf '"%s",' "$@")
+  topics_json="[${topics_json%,}]"
+
+  local payload="{\"names\":$topics_json}"
+
+  echo "Updating topics for $owner/$repo -> $payload" >&2
+ _gh --method PUT "repos/${owner}/${repo}/topics" --input <(echo "$payload")
 }
 
 p6main "$@"
