@@ -77,7 +77,7 @@ gh repo-mgmt [options] <cmd> [<args>...]
 You can alias the script to shorten invocations:
 
 ```bash
-alias ghut="gh update_topics
+alias ghut="gh update_topics"
 ```
 
 ---
