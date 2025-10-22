@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+
+# shellcheck shell=bash
+
+######################################################################
+#<
+#
+# Function: p6_usage()
+#
+#  Args:
+#
+#  Environment:	 EOF LC_ALL NAME OPTIND RULE WHAT
+#>
+######################################################################
+p6_usage() {
+  local rc="${1:-0}"
+  local msg="${2:-}"
+
+  if [ -n "$msg" ]; then
+    echo >&2 "$msg"
+  fi
+  cat <<EOF
+Usage:
+  gh-repo-mgmt [options] <cmd> [<args>...]
+
+Commands:
+  show <name>                    Show a repository setup
+  update <name> <what>=<value>   Update a repository setup
+
+Options:
+  -h                             Show this help message
+
+Examples:
+EOF
+  exit "$rc"
+}
+
+
+######################################################################
+#<
+#
+# Function: p6main()
+#
+#  Args:
+#>
+######################################################################
+p6main() {
+  shift 0
+
+  # sanitize env
+  LC_ALL=C
+
+  # parse options
+  local flag
+  while getopts "h" flag; do
+    case $flag in
+    h) p6_usage 0 "help" ;;
+    *) p6_usage 1 "invalid flag" ;;
+    esac
+  done
+  shift $((OPTIND - 1))
+
+  # grab command
+  local cmd="$1"
+  shift 1
+
+  # security 101: only allow valid commands
+  case $cmd in
+  help) p6_usage ;;
+  show) ;;
+  update) ;;
+  *) p6_usage 1 "invalid cmd" ;;
+  esac
+
+  # exit if any cli errors w/ >0 return code
+  # the commands can still disable locally if needed
+  set -e
+  p6_cmd_"${cmd}" "$@"
+  set +e
+
+  return 0
+}
+
+_gh() {
+
+  gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "$@"
+}
+
+######################################################################
+#<
+#
+# Function: p6_cmd_show(name)
+#
+#  Args:
+#	name -
+#
+#  Environment:	 GET
+#>
+######################################################################
+p6_cmd_show() {
+
+  _gh --method GET repos/:owner/:repo
+}
+
+######################################################################
+#<
+#
+# Function: p6_cmd_update(name, ...)
+#
+#  Args:
+#	name -
+#	... - 
+#
+#  Environment:	 GET PARAMS PUT
+#>
+######################################################################
+######################################################################
+#<
+#
+# Function: p6_cmd_update(name, key=value ...)
+#
+#  Args:
+#	name - repository in owner/repo form
+#	key=value ... - one or more key=value pairs to set
+#
+#  Environment:	 PUT PARAMS
+#>
+######################################################################
+p6_cmd_update() {
+  local name="$1"
+  shift 1
+
+  if [ -z "$name" ] || [ $# -eq 0 ]; then
+    p6_usage 1 "Usage: gh-repo-mgmt update <owner>/<repo> <key>=<value>..."
+  fi
+
+  local owner repo
+  owner="${name%%/*}"
+  repo="${name##*/}"
+
+  local -a data
+  local pair key value
+  for pair in "$@"; do
+    key="${pair%%=*}"
+    value="${pair#*=}"
+
+    if [[ "$value" =~ ^(true|false|[0-9]+)$ ]]; then
+      data+=("\"$key\":$value")
+    else
+      data+=("\"$key\":\"$value\"")
+    fi
+  done
+
+  local payload="{${data[*]// /,}}"
+
+  echo "Updating $owner/$repo with: $payload" >&2
+
+  _gh --method PATCH "repos/${owner}/${repo}" -f data="$payload"
+}
+
+p6main "$@"
