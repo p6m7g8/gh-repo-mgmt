@@ -33,15 +33,20 @@
 ## Installation
 
 1. Ensure dependencies are installed:
+
    ```bash
    gh extension install p6m7g8/gh-repo-mgmt
    which jq gh
    ```
+
 2. Verify access:
+
    ```bash
    gh auth status
    ```
+
 3. Confirm the extension is working:
+
    ```bash
    gh repo-mgmt help
    ```
