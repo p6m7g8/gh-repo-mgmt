@@ -65,7 +65,7 @@ gh repo-mgmt [options] <cmd> [<args>...]
 |----------------------------------- | ----------------------- |
 | `show <name>`                      | Show a branch ruleset   |
 | `update <name> <what>=<value>`     | Update a branch ruleset |
-| `update_topics` <name> <topics>... | Update topics           |
+| `update_topics <name> <topics>...` | Update topics           |
 
 ### Options
 
