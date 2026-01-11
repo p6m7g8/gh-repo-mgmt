@@ -61,17 +61,17 @@ gh repo-mgmt [options] <cmd> [<args>...]
 
 ### Commands
 
-| Command | Description |
-|----------|-------------|
-| `show <name>` | Show a branch ruleset |
-| `update <name> <what>=<value>` | Update a branch ruleset |
-| `update_topics` <name> <topics>... | Update topics |
+| Command                            | Description             |
+|----------------------------------- | ----------------------- |
+| `show <name>`                      | Show a branch ruleset   |
+| `update <name> <what>=<value>`     | Update a branch ruleset |
+| `update_topics` <name> <topics>... | Update topics           |
 
 ### Options
 
-| Option | Description |
-|---------|-------------|
-| `-h` | Show help message |
+| Option  | Description       |
+| --------|------------------ |
+| `-h`    | Show help message |
 
 ---
 
@@ -87,12 +87,12 @@ alias ghut="gh update_topics"
 
 ### Functions
 
-| Function | Purpose |
-|-----------|----------|
-| `p6_usage()` | Prints help text |
-| `p6_cmd_show(name)` | Shows JSON for a repo |
-| `p6_cmd_update(name, ...)` | Updates |
-| `p6_cmd_update_topics(name, ...)` | Updates topics |
+| Function                          | Purpose               |
+| ----------------------------------|---------------------- |
+| `p6_usage()`                      | Prints help text      |
+| `p6_cmd_show(name)`               | Shows JSON for a repo |
+| `p6_cmd_update(name, ...)`        | Updates               |
+| `p6_cmd_update_topics(name, ...)` | Updates topics        |
 
 ---
 
