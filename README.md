@@ -23,8 +23,6 @@
 ## Badges
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-yellowgreen.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Mergify](https://img.shields.io/endpoint.svg?url=https://gh.mergify.io/badges//gh-repo-mgmt/&style=flat)](https://mergify.io)
-[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com//gh-repo-mgmt)
 
 ---
 
@@ -35,15 +33,20 @@
 ## Installation
 
 1. Ensure dependencies are installed:
+
    ```bash
    gh extension install p6m7g8/gh-repo-mgmt
    which jq gh
    ```
+
 2. Verify access:
+
    ```bash
    gh auth status
    ```
+
 3. Confirm the extension is working:
+
    ```bash
    gh repo-mgmt help
    ```
@@ -58,17 +61,17 @@ gh repo-mgmt [options] <cmd> [<args>...]
 
 ### Commands
 
-| Command | Description |
-|----------|-------------|
-| `show <name>` | Show a branch ruleset |
-| `update <name> <what>=<value>` | Update a branch ruleset |
-| `update_topics` <name> <topics>... | Update topics |
+| Command                            | Description             |
+|----------------------------------- | ----------------------- |
+| `show <name>`                      | Show a branch ruleset   |
+| `update <name> <what>=<value>`     | Update a branch ruleset |
+| `update_topics <name> <topics>...` | Update topics           |
 
 ### Options
 
-| Option | Description |
-|---------|-------------|
-| `-h` | Show help message |
+| Option  | Description       |
+| --------|------------------ |
+| `-h`    | Show help message |
 
 ---
 
@@ -84,12 +87,12 @@ alias ghut="gh update_topics"
 
 ### Functions
 
-| Function | Purpose |
-|-----------|----------|
-| `p6_usage()` | Prints help text |
-| `p6_cmd_show(name)` | Shows JSON for a repo |
-| `p6_cmd_update(name, ...)` | Updates |
-| `p6_cmd_update_topics(name, ...)` | Updates topics |
+| Function                          | Purpose               |
+| ----------------------------------|---------------------- |
+| `p6_usage()`                      | Prints help text      |
+| `p6_cmd_show(name)`               | Shows JSON for a repo |
+| `p6_cmd_update(name, ...)`        | Updates               |
+| `p6_cmd_update_topics(name, ...)` | Updates topics        |
 
 ---
 
