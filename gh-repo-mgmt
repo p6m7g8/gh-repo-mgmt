@@ -34,7 +34,7 @@ Options:
 Examples:
   gh-repo-mgmt show Gollucci/gh-repo-mgmt
   gh-repo-mgmt update Gollucci/gh-repo-mgmt has_issues=true has_wiki=false
-  gh-repo-mgmt update_topics Gollucci/gh-repo-mgmt devops cli tool
+  gh-repo-mgmt update-topics Gollucci/gh-repo-mgmt devops cli tool
 EOF
   exit "$rc"
 }
@@ -69,10 +69,12 @@ p6main() {
   shift 1
 
   # security 101: only allow valid commands
+  # normalize command names (support both hyphen and underscore variants)
   case $cmd in
   help) p6_usage ;;
   show) ;;
   update) ;;
+  update-topics) cmd="update_topics" ;;
   update_topics) ;;
   *) p6_usage 1 "invalid cmd" ;;
   esac
