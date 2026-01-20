@@ -29,6 +29,7 @@ Commands:
   update <name> <what>=<value>     Update a repository setup
   update-topics <name> <topic>...  Replace repository topics
   add-topic <name> <topic>...      Add topics to repository (keeps existing)
+  delete-topic <name> <topic>...   Remove topics from repository
 
 Options:
   -h                             Show this help message
@@ -40,6 +41,7 @@ Examples:
   gh-repo-mgmt update Gollucci/gh-repo-mgmt has_issues=true has_wiki=false
   gh-repo-mgmt update-topics Gollucci/gh-repo-mgmt devops cli tool
   gh-repo-mgmt add-topic Gollucci/gh-repo-mgmt new-topic
+  gh-repo-mgmt delete-topic Gollucci/gh-repo-mgmt old-topic
 EOF
   exit "$rc"
 }
@@ -84,6 +86,8 @@ p6main() {
   update_topics) ;;
   add-topic) cmd="add_topic" ;;
   add_topic) ;;
+  delete-topic) cmd="delete_topic" ;;
+  delete_topic) ;;
   *) p6_usage 1 "invalid cmd" ;;
   esac
 
@@ -296,6 +300,66 @@ p6_cmd_add_topic() {
   local payload="{\"names\":$topics_json}"
 
   echo "Adding topics to $owner/$repo -> $payload" >&2
+  _gh --method PUT "repos/${owner}/${repo}/topics" --input <(echo "$payload")
+}
+
+######################################################################
+#<
+#
+# Function: p6_cmd_delete_topic(name, topics...)
+#
+#  Args:
+#	name - repository in owner/repo form
+#	topics... - space-separated list of topics to remove
+#
+#>
+######################################################################
+p6_cmd_delete_topic() {
+  local name="$1"
+  shift 1
+
+  if [ -z "$name" ] || [ $# -eq 0 ]; then
+    p6_usage 1 "Usage: gh-repo-mgmt delete-topic <owner>/<repo> <topic>..."
+  fi
+
+  local owner="${name%%/*}"
+  local repo="${name##*/}"
+
+  # Get current topics
+  local current_topics
+  current_topics=$(_gh --method GET "repos/${owner}/${repo}/topics" --jq '.names[]' 2>/dev/null || true)
+
+  # Build list of remaining topics (excluding those to delete)
+  local -a remaining_topics
+  local topic to_delete
+
+  while IFS= read -r topic; do
+    [ -z "$topic" ] && continue
+    local should_delete=false
+    for to_delete in "$@"; do
+      if [ "$topic" = "$to_delete" ]; then
+        should_delete=true
+        echo "Removing topic: $topic" >&2
+        break
+      fi
+    done
+    if [ "$should_delete" = false ]; then
+      remaining_topics+=("$topic")
+    fi
+  done <<< "$current_topics"
+
+  # Build JSON payload
+  local topics_json
+  if [ ${#remaining_topics[@]} -eq 0 ]; then
+    topics_json="[]"
+  else
+    topics_json=$(printf '"%s",' "${remaining_topics[@]}")
+    topics_json="[${topics_json%,}]"
+  fi
+
+  local payload="{\"names\":$topics_json}"
+
+  echo "Updating topics for $owner/$repo -> $payload" >&2
   _gh --method PUT "repos/${owner}/${repo}/topics" --input <(echo "$payload")
 }
 
