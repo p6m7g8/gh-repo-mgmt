@@ -31,6 +31,8 @@ Commands:
   add-topic <name> <topic>...      Add topics to repository (keeps existing)
   delete-topic <name> <topic>...   Remove topics from repository
   visibility <name> <public|private>  Change repository visibility
+  archive <name>                   Archive a repository
+  unarchive <name>                 Unarchive a repository
 
 Options:
   -h                             Show this help message
@@ -44,6 +46,8 @@ Examples:
   gh-repo-mgmt add-topic Gollucci/gh-repo-mgmt new-topic
   gh-repo-mgmt delete-topic Gollucci/gh-repo-mgmt old-topic
   gh-repo-mgmt visibility Gollucci/gh-repo-mgmt public
+  gh-repo-mgmt archive Gollucci/gh-repo-mgmt
+  gh-repo-mgmt unarchive Gollucci/gh-repo-mgmt
 EOF
   exit "$rc"
 }
@@ -91,6 +95,8 @@ p6main() {
   delete-topic) cmd="delete_topic" ;;
   delete_topic) ;;
   visibility) ;;
+  archive) ;;
+  unarchive) ;;
   *) p6_usage 1 "invalid cmd" ;;
   esac
 
@@ -397,6 +403,58 @@ p6_cmd_visibility() {
   local payload="{\"visibility\":\"$visibility\"}"
 
   echo "Setting $owner/$repo visibility to: $visibility" >&2
+  _gh --method PATCH "repos/${owner}/${repo}" --input <(echo "$payload")
+}
+
+######################################################################
+#<
+#
+# Function: p6_cmd_archive(name)
+#
+#  Args:
+#	name - repository in owner/repo form
+#
+#>
+######################################################################
+p6_cmd_archive() {
+  local name="$1"
+
+  if [ -z "$name" ]; then
+    p6_usage 1 "Usage: gh-repo-mgmt archive <owner>/<repo>"
+  fi
+
+  local owner="${name%%/*}"
+  local repo="${name##*/}"
+
+  local payload='{"archived":true}'
+
+  echo "Archiving $owner/$repo" >&2
+  _gh --method PATCH "repos/${owner}/${repo}" --input <(echo "$payload")
+}
+
+######################################################################
+#<
+#
+# Function: p6_cmd_unarchive(name)
+#
+#  Args:
+#	name - repository in owner/repo form
+#
+#>
+######################################################################
+p6_cmd_unarchive() {
+  local name="$1"
+
+  if [ -z "$name" ]; then
+    p6_usage 1 "Usage: gh-repo-mgmt unarchive <owner>/<repo>"
+  fi
+
+  local owner="${name%%/*}"
+  local repo="${name##*/}"
+
+  local payload='{"archived":false}'
+
+  echo "Unarchiving $owner/$repo" >&2
   _gh --method PATCH "repos/${owner}/${repo}" --input <(echo "$payload")
 }
 
