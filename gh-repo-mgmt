@@ -24,7 +24,7 @@ Usage:
   gh-repo-mgmt [options] <cmd> [<args>...]
 
 Commands:
-  show <name>                      Show a repository setup
+  show [<name>]                    Show a repository setup (defaults to current repo)
   update <name> <what>=<value>     Update a repository setup
   update-topics <name> <topic>...  Update repository topics
 
@@ -99,14 +99,22 @@ _gh() {
 # Function: p6_cmd_show(name)
 #
 #  Args:
-#	name -
+#	name - repository in owner/repo form (optional, defaults to current repo)
 #
 #  Environment:	 GET
 #>
 ######################################################################
 p6_cmd_show() {
+  local name="${1:-}"
 
-  _gh --method GET repos/:owner/:repo
+  if [ -z "$name" ]; then
+    # Use current repo context
+    _gh --method GET repos/:owner/:repo
+  else
+    local owner="${name%%/*}"
+    local repo="${name##*/}"
+    _gh --method GET "repos/${owner}/${repo}"
+  fi
 }
 
 ######################################################################
