@@ -166,6 +166,10 @@ p6_cmd_update_topics() {
   local name="$1"
   shift 1
 
+  if [ -z "$name" ] || [ $# -eq 0 ]; then
+    p6_usage 1 "Usage: gh-repo-mgmt update_topics <owner>/<repo> <topic>..."
+  fi
+
   local owner="${name%%/*}"
   local repo="${name##*/}"
 
@@ -176,7 +180,7 @@ p6_cmd_update_topics() {
   local payload="{\"names\":$topics_json}"
 
   echo "Updating topics for $owner/$repo -> $payload" >&2
- _gh --method PUT "repos/${owner}/${repo}/topics" --input <(echo "$payload")
+  _gh --method PUT "repos/${owner}/${repo}/topics" --input <(echo "$payload")
 }
 
 p6main "$@"
