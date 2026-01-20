@@ -27,7 +27,8 @@ Commands:
   show [<name>]                    Show a repository setup (defaults to current repo)
   list <owner> [--type=<type>]     List repositories for a user/org
   update <name> <what>=<value>     Update a repository setup
-  update-topics <name> <topic>...  Update repository topics
+  update-topics <name> <topic>...  Replace repository topics
+  add-topic <name> <topic>...      Add topics to repository (keeps existing)
 
 Options:
   -h                             Show this help message
@@ -38,6 +39,7 @@ Examples:
   gh-repo-mgmt list p6m7g8 --type=public
   gh-repo-mgmt update Gollucci/gh-repo-mgmt has_issues=true has_wiki=false
   gh-repo-mgmt update-topics Gollucci/gh-repo-mgmt devops cli tool
+  gh-repo-mgmt add-topic Gollucci/gh-repo-mgmt new-topic
 EOF
   exit "$rc"
 }
@@ -80,6 +82,8 @@ p6main() {
   update) ;;
   update-topics) cmd="update_topics" ;;
   update_topics) ;;
+  add-topic) cmd="add_topic" ;;
+  add_topic) ;;
   *) p6_usage 1 "invalid cmd" ;;
   esac
 
@@ -231,6 +235,67 @@ p6_cmd_update_topics() {
   local payload="{\"names\":$topics_json}"
 
   echo "Updating topics for $owner/$repo -> $payload" >&2
+  _gh --method PUT "repos/${owner}/${repo}/topics" --input <(echo "$payload")
+}
+
+######################################################################
+#<
+#
+# Function: p6_cmd_add_topic(name, topics...)
+#
+#  Args:
+#	name - repository in owner/repo form
+#	topics... - space-separated list of topics to add
+#
+#>
+######################################################################
+p6_cmd_add_topic() {
+  local name="$1"
+  shift 1
+
+  if [ -z "$name" ] || [ $# -eq 0 ]; then
+    p6_usage 1 "Usage: gh-repo-mgmt add-topic <owner>/<repo> <topic>..."
+  fi
+
+  local owner="${name%%/*}"
+  local repo="${name##*/}"
+
+  # Get current topics
+  local current_topics
+  current_topics=$(_gh --method GET "repos/${owner}/${repo}/topics" --jq '.names[]' 2>/dev/null || true)
+
+  # Combine current and new topics, removing duplicates
+  local -a all_topics
+  local topic
+
+  # Add current topics
+  while IFS= read -r topic; do
+    [ -n "$topic" ] && all_topics+=("$topic")
+  done <<< "$current_topics"
+
+  # Add new topics (skip if already exists)
+  for topic in "$@"; do
+    local exists=false
+    local existing
+    for existing in "${all_topics[@]}"; do
+      if [ "$existing" = "$topic" ]; then
+        exists=true
+        break
+      fi
+    done
+    if [ "$exists" = false ]; then
+      all_topics+=("$topic")
+    fi
+  done
+
+  # Build JSON payload
+  local topics_json
+  topics_json=$(printf '"%s",' "${all_topics[@]}")
+  topics_json="[${topics_json%,}]"
+
+  local payload="{\"names\":$topics_json}"
+
+  echo "Adding topics to $owner/$repo -> $payload" >&2
   _gh --method PUT "repos/${owner}/${repo}/topics" --input <(echo "$payload")
 }
 
