@@ -30,6 +30,7 @@ Commands:
   update-topics <name> <topic>...  Replace repository topics
   add-topic <name> <topic>...      Add topics to repository (keeps existing)
   delete-topic <name> <topic>...   Remove topics from repository
+  visibility <name> <public|private>  Change repository visibility
 
 Options:
   -h                             Show this help message
@@ -42,6 +43,7 @@ Examples:
   gh-repo-mgmt update-topics Gollucci/gh-repo-mgmt devops cli tool
   gh-repo-mgmt add-topic Gollucci/gh-repo-mgmt new-topic
   gh-repo-mgmt delete-topic Gollucci/gh-repo-mgmt old-topic
+  gh-repo-mgmt visibility Gollucci/gh-repo-mgmt public
 EOF
   exit "$rc"
 }
@@ -88,6 +90,7 @@ p6main() {
   add_topic) ;;
   delete-topic) cmd="delete_topic" ;;
   delete_topic) ;;
+  visibility) ;;
   *) p6_usage 1 "invalid cmd" ;;
   esac
 
@@ -361,6 +364,40 @@ p6_cmd_delete_topic() {
 
   echo "Updating topics for $owner/$repo -> $payload" >&2
   _gh --method PUT "repos/${owner}/${repo}/topics" --input <(echo "$payload")
+}
+
+######################################################################
+#<
+#
+# Function: p6_cmd_visibility(name, visibility)
+#
+#  Args:
+#	name - repository in owner/repo form
+#	visibility - public or private
+#
+#>
+######################################################################
+p6_cmd_visibility() {
+  local name="$1"
+  local visibility="$2"
+
+  if [ -z "$name" ] || [ -z "$visibility" ]; then
+    p6_usage 1 "Usage: gh-repo-mgmt visibility <owner>/<repo> <public|private>"
+  fi
+
+  # Validate visibility value
+  case "$visibility" in
+  public | private) ;;
+  *) p6_usage 1 "Invalid visibility: $visibility. Must be: public, private" ;;
+  esac
+
+  local owner="${name%%/*}"
+  local repo="${name##*/}"
+
+  local payload="{\"visibility\":\"$visibility\"}"
+
+  echo "Setting $owner/$repo visibility to: $visibility" >&2
+  _gh --method PATCH "repos/${owner}/${repo}" --input <(echo "$payload")
 }
 
 p6main "$@"
