@@ -25,6 +25,7 @@ Usage:
 
 Commands:
   show [<name>]                    Show a repository setup (defaults to current repo)
+  list <owner> [--type=<type>]     List repositories for a user/org
   update <name> <what>=<value>     Update a repository setup
   update-topics <name> <topic>...  Update repository topics
 
@@ -33,6 +34,8 @@ Options:
 
 Examples:
   gh-repo-mgmt show Gollucci/gh-repo-mgmt
+  gh-repo-mgmt list p6m7g8
+  gh-repo-mgmt list p6m7g8 --type=public
   gh-repo-mgmt update Gollucci/gh-repo-mgmt has_issues=true has_wiki=false
   gh-repo-mgmt update-topics Gollucci/gh-repo-mgmt devops cli tool
 EOF
@@ -73,6 +76,7 @@ p6main() {
   case $cmd in
   help) p6_usage ;;
   show) ;;
+  list) ;;
   update) ;;
   update-topics) cmd="update_topics" ;;
   update_topics) ;;
@@ -115,6 +119,43 @@ p6_cmd_show() {
     local repo="${name##*/}"
     _gh --method GET "repos/${owner}/${repo}"
   fi
+}
+
+######################################################################
+#<
+#
+# Function: p6_cmd_list(owner, [--type=<type>])
+#
+#  Args:
+#	owner - user or organization name
+#	--type - filter by type: all, public, private, forks, sources (default: all)
+#
+#>
+######################################################################
+p6_cmd_list() {
+  local owner="$1"
+  shift 1
+
+  if [ -z "$owner" ]; then
+    p6_usage 1 "Usage: gh-repo-mgmt list <owner> [--type=<type>]"
+  fi
+
+  local repo_type="all"
+  local arg
+  for arg in "$@"; do
+    case "$arg" in
+    --type=*) repo_type="${arg#--type=}" ;;
+    *) p6_usage 1 "Unknown option: $arg" ;;
+    esac
+  done
+
+  # Validate type
+  case "$repo_type" in
+  all | public | private | forks | sources) ;;
+  *) p6_usage 1 "Invalid type: $repo_type. Must be: all, public, private, forks, sources" ;;
+  esac
+
+  _gh --method GET "users/${owner}/repos" -f type="$repo_type" -f per_page=100 --paginate
 }
 
 ######################################################################
