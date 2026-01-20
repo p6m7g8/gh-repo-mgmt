@@ -27,6 +27,7 @@ Commands:
   show <name>                      Show a repository setup
   update <name> <what>=<value>     Update a repository setup
   update-topics <name> <topic>...  Update repository topics
+  clone-settings <src> <dest>      Copy settings from one repo to another
 
 Options:
   -h                             Show this help message
@@ -34,7 +35,8 @@ Options:
 Examples:
   gh-repo-mgmt show Gollucci/gh-repo-mgmt
   gh-repo-mgmt update Gollucci/gh-repo-mgmt has_issues=true has_wiki=false
-  gh-repo-mgmt update_topics Gollucci/gh-repo-mgmt devops cli tool
+  gh-repo-mgmt update-topics Gollucci/gh-repo-mgmt devops cli tool
+  gh-repo-mgmt clone-settings p6m7g8/source-repo p6m7g8/target-repo
 EOF
   exit "$rc"
 }
@@ -69,11 +71,15 @@ p6main() {
   shift 1
 
   # security 101: only allow valid commands
+  # normalize command names (support both hyphen and underscore variants)
   case $cmd in
   help) p6_usage ;;
   show) ;;
   update) ;;
+  update-topics) cmd="update_topics" ;;
   update_topics) ;;
+  clone-settings) cmd="clone_settings" ;;
+  clone_settings) ;;
   *) p6_usage 1 "invalid cmd" ;;
   esac
 
@@ -176,7 +182,82 @@ p6_cmd_update_topics() {
   local payload="{\"names\":$topics_json}"
 
   echo "Updating topics for $owner/$repo -> $payload" >&2
- _gh --method PUT "repos/${owner}/${repo}/topics" --input <(echo "$payload")
+  _gh --method PUT "repos/${owner}/${repo}/topics" --input <(echo "$payload")
+}
+
+######################################################################
+#<
+#
+# Function: p6_cmd_clone_settings(source, target)
+#
+#  Args:
+#	source - source repository in owner/repo form
+#	target - target repository in owner/repo form
+#
+#>
+######################################################################
+p6_cmd_clone_settings() {
+  local source="$1"
+  local target="$2"
+
+  if [ -z "$source" ] || [ -z "$target" ]; then
+    p6_usage 1 "Usage: gh-repo-mgmt clone-settings <source-owner/repo> <target-owner/repo>"
+  fi
+
+  local src_owner="${source%%/*}"
+  local src_repo="${source##*/}"
+  local tgt_owner="${target%%/*}"
+  local tgt_repo="${target##*/}"
+
+  echo "Fetching settings from $src_owner/$src_repo..." >&2
+
+  # Get source repo settings
+  local src_data
+  src_data=$(_gh --method GET "repos/${src_owner}/${src_repo}")
+
+  # Extract settings we want to copy
+  local has_issues has_projects has_wiki has_downloads has_discussions
+  local allow_squash_merge allow_merge_commit allow_rebase_merge
+  local delete_branch_on_merge allow_auto_merge
+
+  has_issues=$(echo "$src_data" | grep -o '"has_issues":[^,}]*' | cut -d: -f2)
+  has_projects=$(echo "$src_data" | grep -o '"has_projects":[^,}]*' | cut -d: -f2)
+  has_wiki=$(echo "$src_data" | grep -o '"has_wiki":[^,}]*' | cut -d: -f2)
+  has_downloads=$(echo "$src_data" | grep -o '"has_downloads":[^,}]*' | cut -d: -f2)
+  has_discussions=$(echo "$src_data" | grep -o '"has_discussions":[^,}]*' | cut -d: -f2)
+  allow_squash_merge=$(echo "$src_data" | grep -o '"allow_squash_merge":[^,}]*' | cut -d: -f2)
+  allow_merge_commit=$(echo "$src_data" | grep -o '"allow_merge_commit":[^,}]*' | cut -d: -f2)
+  allow_rebase_merge=$(echo "$src_data" | grep -o '"allow_rebase_merge":[^,}]*' | cut -d: -f2)
+  delete_branch_on_merge=$(echo "$src_data" | grep -o '"delete_branch_on_merge":[^,}]*' | cut -d: -f2)
+  allow_auto_merge=$(echo "$src_data" | grep -o '"allow_auto_merge":[^,}]*' | cut -d: -f2)
+
+  # Build payload for target repo
+  local payload="{"
+  payload+="\"has_issues\":$has_issues,"
+  payload+="\"has_projects\":$has_projects,"
+  payload+="\"has_wiki\":$has_wiki,"
+  payload+="\"has_downloads\":$has_downloads,"
+  payload+="\"has_discussions\":$has_discussions,"
+  payload+="\"allow_squash_merge\":$allow_squash_merge,"
+  payload+="\"allow_merge_commit\":$allow_merge_commit,"
+  payload+="\"allow_rebase_merge\":$allow_rebase_merge,"
+  payload+="\"delete_branch_on_merge\":$delete_branch_on_merge,"
+  payload+="\"allow_auto_merge\":$allow_auto_merge"
+  payload+="}"
+
+  echo "Applying settings to $tgt_owner/$tgt_repo..." >&2
+  echo "Settings: $payload" >&2
+
+  _gh --method PATCH "repos/${tgt_owner}/${tgt_repo}" --input <(echo "$payload")
+
+  # Copy topics
+  echo "Copying topics..." >&2
+  local topics
+  topics=$(_gh --method GET "repos/${src_owner}/${src_repo}/topics")
+
+  _gh --method PUT "repos/${tgt_owner}/${tgt_repo}/topics" --input <(echo "$topics")
+
+  echo "Done! Settings cloned from $source to $target" >&2
 }
 
 p6main "$@"
