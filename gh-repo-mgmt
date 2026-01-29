@@ -26,6 +26,7 @@ Usage:
 Commands:
   create <name> [options]          Create a repository (idempotent)
   delete <name>                    Delete a repository (idempotent)
+  rename <name> <new-name>         Rename a repository (idempotent)
   show [<name>]                    Show a repository setup (defaults to current repo)
   list <owner> [--type=<type>]     List repositories for a user/org
   update <name> <what>=<value>     Update a repository setup
@@ -47,6 +48,7 @@ Create Options:
 Examples:
   gh-repo-mgmt create p6m7g8/new-repo --private --description="My new repo"
   gh-repo-mgmt delete p6m7g8/old-repo
+  gh-repo-mgmt rename p6m7g8/old-name new-name
   gh-repo-mgmt show Gollucci/gh-repo-mgmt
   gh-repo-mgmt list p6m7g8
   gh-repo-mgmt list p6m7g8 --type=public
@@ -92,6 +94,7 @@ p6main() {
   help) p6_usage ;;
   create) ;;
   delete) ;;
+  rename) ;;
   show) ;;
   list) ;;
   update) ;;
@@ -238,6 +241,58 @@ p6_cmd_delete() {
   _gh --method DELETE "repos/${owner}/${repo}"
 
   echo "Repository $owner/$repo deleted successfully" >&2
+}
+
+######################################################################
+#<
+#
+# Function: p6_cmd_rename(name, new_name)
+#
+#  Args:
+#	name - repository in owner/repo form
+#	new_name - new repository name (without owner)
+#
+#  Environment:	 PATCH GET
+#>
+######################################################################
+p6_cmd_rename() {
+  local name="$1"
+  local new_name="$2"
+
+  if [ -z "$name" ] || [ -z "$new_name" ]; then
+    p6_usage 1 "Usage: gh-repo-mgmt rename <owner>/<repo> <new-name>"
+  fi
+
+  local owner="${name%%/*}"
+  local repo="${name##*/}"
+
+  # Check if repository exists
+  if ! _gh --method GET "repos/${owner}/${repo}" 2>/dev/null | grep -q "\"name\""; then
+    echo "Error: Repository $owner/$repo does not exist" >&2
+    return 1
+  fi
+
+  # Check if already has the desired name (idempotent)
+  local current_name
+  current_name=$(_gh --method GET "repos/${owner}/${repo}" 2>/dev/null | grep -o "\"name\":\"[^\"]*\"" | head -1 | cut -d'"' -f4)
+
+  if [ "$current_name" = "$new_name" ]; then
+    echo "Repository $owner/$repo already has name '$new_name' (idempotent)" >&2
+    return 0
+  fi
+
+  # Check if target name already exists
+  if _gh --method GET "repos/${owner}/${new_name}" 2>/dev/null | grep -q "\"name\""; then
+    echo "Error: Repository $owner/$new_name already exists" >&2
+    return 1
+  fi
+
+  echo "Renaming repository $owner/$repo to $new_name" >&2
+
+  local payload="{\"name\":\"$new_name\"}"
+  _gh --method PATCH "repos/${owner}/${repo}" --input <(echo "$payload")
+
+  echo "Repository renamed successfully: $owner/$repo -> $owner/$new_name" >&2
 }
 
 ######################################################################
