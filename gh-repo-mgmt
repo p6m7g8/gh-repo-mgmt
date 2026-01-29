@@ -28,6 +28,7 @@ Commands:
   delete <name>                    Delete a repository (idempotent)
   rename <name> <new-name>         Rename a repository (idempotent)
   transfer <name> <new-owner>      Transfer repository ownership (idempotent)
+  ensure <name> [options]          Ensure repository exists with settings (create or update)
   show [<name>]                    Show a repository setup (defaults to current repo)
   list <owner> [--type=<type>]     List repositories for a user/org
   update <name> <what>=<value>     Update a repository setup
@@ -37,7 +38,7 @@ Commands:
 Options:
   -h                             Show this help message
 
-Create Options:
+Create/Ensure Options:
   --public                       Create as public repository (default)
   --private                      Create as private repository
   --description=<text>           Repository description
@@ -45,12 +46,14 @@ Create Options:
   --disable-wiki                 Disable wiki
   --disable-issues               Disable issues
   --disable-projects             Disable projects
+  --topics=<tag1,tag2,...>       Comma-separated repository topics (ensure only)
 
 Examples:
   gh-repo-mgmt create p6m7g8/new-repo --private --description="My new repo"
   gh-repo-mgmt delete p6m7g8/old-repo
   gh-repo-mgmt rename p6m7g8/old-name new-name
   gh-repo-mgmt transfer p6m7g8/my-repo new-owner
+  gh-repo-mgmt ensure p6m7g8/my-repo --private --description="Repo" --topics="tag1,tag2"
   gh-repo-mgmt show Gollucci/gh-repo-mgmt
   gh-repo-mgmt list p6m7g8
   gh-repo-mgmt list p6m7g8 --type=public
@@ -98,6 +101,7 @@ p6main() {
   delete) ;;
   rename) ;;
   transfer) ;;
+  ensure) ;;
   show) ;;
   list) ;;
   update) ;;
@@ -549,3 +553,134 @@ p6_cmd_add_topic() {
 }
 
 p6main "$@"
+
+######################################################################
+#<
+#
+# Function: p6_cmd_ensure(name, options...)
+#
+#  Args:
+#	name - repository in owner/repo form
+#	options - optional flags (same as create, plus --topics)
+#
+#  Environment:	 POST GET PATCH PUT
+#>
+######################################################################
+p6_cmd_ensure() {
+  local name="$1"
+  shift 1
+
+  if [ -z "$name" ]; then
+    p6_usage 1 "Usage: gh-repo-mgmt ensure <owner>/<repo> [options]"
+  fi
+
+  local owner="${name%%/*}"
+  local repo="${name##*/}"
+
+  # Parse options (same as create, plus --topics)
+  local visibility="public"
+  local description=""
+  local homepage=""
+  local has_issues="true"
+  local has_wiki="true"
+  local has_projects="true"
+  local topics=""
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --private)
+        visibility="private"
+        ;;
+      --public)
+        visibility="public"
+        ;;
+      --description=*)
+        description="${1#--description=}"
+        ;;
+      --homepage=*)
+        homepage="${1#--homepage=}"
+        ;;
+      --disable-wiki)
+        has_wiki="false"
+        ;;
+      --disable-issues)
+        has_issues="false"
+        ;;
+      --disable-projects)
+        has_projects="false"
+        ;;
+      --topics=*)
+        topics="${1#--topics=}"
+        ;;
+      *)
+        echo "Unknown option: $1" >&2
+        p6_usage 1
+        ;;
+    esac
+    shift
+  done
+
+  # Check if repository exists
+  if ! _gh --method GET "repos/${owner}/${repo}" 2>/dev/null | grep -q "\"name\""; then
+    echo "Repository $owner/$repo does not exist, creating..." >&2
+
+    # Build create payload
+    local payload="{"
+    payload+="\"name\":\"$repo\""
+    payload+=",\"private\":$([ "$visibility" = "private" ] && echo "true" || echo "false")"
+    payload+=",\"has_issues\":$has_issues"
+    payload+=",\"has_wiki\":$has_wiki"
+    payload+=",\"has_projects\":$has_projects"
+    [ -n "$description" ] && payload+=",\"description\":\"$description\""
+    [ -n "$homepage" ] && payload+=",\"homepage\":\"$homepage\""
+    payload+="}"
+
+    # Create repository
+    if gh api "users/${owner}" 2>/dev/null | grep -q "\"type\":\"Organization\""; then
+      _gh --method POST "orgs/${owner}/repos" --input <(echo "$payload")
+    else
+      _gh --method POST "user/repos" --input <(echo "$payload")
+    fi
+
+    # Set topics if provided
+    if [ -n "$topics" ]; then
+      echo "Setting topics: $topics" >&2
+      IFS=',' read -ra topic_array <<< "$topics"
+      local topics_json
+      topics_json=$(printf '"%s",' "${topic_array[@]}")
+      topics_json="[${topics_json%,}]"
+      local topic_payload="{\"names\":$topics_json}"
+      _gh --method PUT "repos/${owner}/${repo}/topics" --input <(echo "$topic_payload")
+    fi
+
+    echo "Repository $owner/$repo created successfully" >&2
+  else
+    echo "Repository $owner/$repo exists, updating settings..." >&2
+
+    # Build update payload
+    local payload="{"
+    payload+="\"private\":$([ "$visibility" = "private" ] && echo "true" || echo "false")"
+    payload+=",\"has_issues\":$has_issues"
+    payload+=",\"has_wiki\":$has_wiki"
+    payload+=",\"has_projects\":$has_projects"
+    [ -n "$description" ] && payload+=",\"description\":\"$description\""
+    [ -n "$homepage" ] && payload+=",\"homepage\":\"$homepage\""
+    payload+="}"
+
+    # Update repository settings
+    _gh --method PATCH "repos/${owner}/${repo}" --input <(echo "$payload")
+
+    # Update topics if provided
+    if [ -n "$topics" ]; then
+      echo "Updating topics: $topics" >&2
+      IFS=',' read -ra topic_array <<< "$topics"
+      local topics_json
+      topics_json=$(printf '"%s",' "${topic_array[@]}")
+      topics_json="[${topics_json%,}]"
+      local topic_payload="{\"names\":$topics_json}"
+      _gh --method PUT "repos/${owner}/${repo}/topics" --input <(echo "$topic_payload")
+    fi
+
+    echo "Repository $owner/$repo updated successfully" >&2
+  fi
+}
