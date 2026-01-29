@@ -46,7 +46,7 @@ load ../test_helper
 }
 
 @test "ensure command is in case statement" {
-  grep "case \$cmd in" gh-repo-mgmt -A 7 | grep -q "ensure)"
+  grep "case \$cmd in" gh-repo-mgmt -A 10 | grep -q "ensure)"
   [ "$?" -eq 0 ]
 }
 
