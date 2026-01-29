@@ -25,6 +25,7 @@ Usage:
 
 Commands:
   create <name> [options]          Create a repository (idempotent)
+  delete <name>                    Delete a repository (idempotent)
   show [<name>]                    Show a repository setup (defaults to current repo)
   list <owner> [--type=<type>]     List repositories for a user/org
   update <name> <what>=<value>     Update a repository setup
@@ -45,6 +46,7 @@ Create Options:
 
 Examples:
   gh-repo-mgmt create p6m7g8/new-repo --private --description="My new repo"
+  gh-repo-mgmt delete p6m7g8/old-repo
   gh-repo-mgmt show Gollucci/gh-repo-mgmt
   gh-repo-mgmt list p6m7g8
   gh-repo-mgmt list p6m7g8 --type=public
@@ -89,6 +91,7 @@ p6main() {
   case $cmd in
   help) p6_usage ;;
   create) ;;
+  delete) ;;
   show) ;;
   list) ;;
   update) ;;
@@ -202,6 +205,39 @@ p6_cmd_create() {
   else
     _gh --method POST "user/repos" --input <(echo "$payload")
   fi
+}
+
+######################################################################
+#<
+#
+# Function: p6_cmd_delete(name)
+#
+#  Args:
+#	name - repository in owner/repo form
+#
+#  Environment:	 DELETE GET
+#>
+######################################################################
+p6_cmd_delete() {
+  local name="$1"
+
+  if [ -z "$name" ]; then
+    p6_usage 1 "Usage: gh-repo-mgmt delete <owner>/<repo>"
+  fi
+
+  local owner="${name%%/*}"
+  local repo="${name##*/}"
+
+  # Check if repository exists (idempotent)
+  if ! _gh --method GET "repos/${owner}/${repo}" 2>/dev/null | grep -q "\"name\""; then
+    echo "Repository $owner/$repo does not exist (idempotent - already deleted)" >&2
+    return 0
+  fi
+
+  echo "Deleting repository $owner/$repo" >&2
+  _gh --method DELETE "repos/${owner}/${repo}"
+
+  echo "Repository $owner/$repo deleted successfully" >&2
 }
 
 ######################################################################
