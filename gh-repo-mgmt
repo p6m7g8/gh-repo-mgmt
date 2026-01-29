@@ -28,6 +28,8 @@ Commands:
   delete <name>                    Delete a repository (idempotent)
   rename <name> <new-name>         Rename a repository (idempotent)
   transfer <name> <new-owner>      Transfer repository ownership (idempotent)
+  archive <name>                   Archive a repository (idempotent)
+  unarchive <name>                 Unarchive a repository (idempotent)
   ensure <name> [options]          Ensure repository exists with settings (create or update)
   show [<name>]                    Show a repository setup (defaults to current repo)
   list <owner> [--type=<type>]     List repositories for a user/org
@@ -101,6 +103,8 @@ p6main() {
   delete) ;;
   rename) ;;
   transfer) ;;
+  archive) ;;
+  unarchive) ;;
   ensure) ;;
   show) ;;
   list) ;;
@@ -352,6 +356,94 @@ p6_cmd_transfer() {
   _gh --method POST "repos/${owner}/${repo}/transfer" --input <(echo "$payload")
 
   echo "Repository transferred successfully: $owner/$repo -> $new_owner/$repo" >&2
+}
+
+######################################################################
+#<
+#
+# Function: p6_cmd_archive(name)
+#
+#  Args:
+#	name - repository in owner/repo form
+#
+#  Environment:	 PATCH GET
+#>
+######################################################################
+p6_cmd_archive() {
+  local name="$1"
+
+  if [ -z "$name" ]; then
+    p6_usage 1 "Usage: gh-repo-mgmt archive <owner>/<repo>"
+  fi
+
+  local owner="${name%%/*}"
+  local repo="${name##*/}"
+
+  # Check if repository exists
+  if ! _gh --method GET "repos/${owner}/${repo}" 2>/dev/null | grep -q "\"name\""; then
+    echo "Error: Repository $owner/$repo does not exist" >&2
+    return 1
+  fi
+
+  # Check if already archived (idempotent)
+  local is_archived
+  is_archived=$(_gh --method GET "repos/${owner}/${repo}" 2>/dev/null | grep -o "\"archived\":[^,]*" | cut -d':' -f2 | tr -d ' ')
+
+  if [ "$is_archived" = "true" ]; then
+    echo "Repository $owner/$repo is already archived (idempotent)" >&2
+    return 0
+  fi
+
+  echo "Archiving repository $owner/$repo" >&2
+
+  local payload='{"archived":true}'
+  _gh --method PATCH "repos/${owner}/${repo}" --input <(echo "$payload")
+
+  echo "Repository $owner/$repo archived successfully" >&2
+}
+
+######################################################################
+#<
+#
+# Function: p6_cmd_unarchive(name)
+#
+#  Args:
+#	name - repository in owner/repo form
+#
+#  Environment:	 PATCH GET
+#>
+######################################################################
+p6_cmd_unarchive() {
+  local name="$1"
+
+  if [ -z "$name" ]; then
+    p6_usage 1 "Usage: gh-repo-mgmt unarchive <owner>/<repo>"
+  fi
+
+  local owner="${name%%/*}"
+  local repo="${name##*/}"
+
+  # Check if repository exists
+  if ! _gh --method GET "repos/${owner}/${repo}" 2>/dev/null | grep -q "\"name\""; then
+    echo "Error: Repository $owner/$repo does not exist" >&2
+    return 1
+  fi
+
+  # Check if already unarchived (idempotent)
+  local is_archived
+  is_archived=$(_gh --method GET "repos/${owner}/${repo}" 2>/dev/null | grep -o "\"archived\":[^,]*" | cut -d':' -f2 | tr -d ' ')
+
+  if [ "$is_archived" = "false" ]; then
+    echo "Repository $owner/$repo is already unarchived (idempotent)" >&2
+    return 0
+  fi
+
+  echo "Unarchiving repository $owner/$repo" >&2
+
+  local payload='{"archived":false}'
+  _gh --method PATCH "repos/${owner}/${repo}" --input <(echo "$payload")
+
+  echo "Repository $owner/$repo unarchived successfully" >&2
 }
 
 ######################################################################
