@@ -27,6 +27,7 @@ Commands:
   create <name> [options]          Create a repository (idempotent)
   delete <name>                    Delete a repository (idempotent)
   rename <name> <new-name>         Rename a repository (idempotent)
+  transfer <name> <new-owner>      Transfer repository ownership (idempotent)
   show [<name>]                    Show a repository setup (defaults to current repo)
   list <owner> [--type=<type>]     List repositories for a user/org
   update <name> <what>=<value>     Update a repository setup
@@ -49,6 +50,7 @@ Examples:
   gh-repo-mgmt create p6m7g8/new-repo --private --description="My new repo"
   gh-repo-mgmt delete p6m7g8/old-repo
   gh-repo-mgmt rename p6m7g8/old-name new-name
+  gh-repo-mgmt transfer p6m7g8/my-repo new-owner
   gh-repo-mgmt show Gollucci/gh-repo-mgmt
   gh-repo-mgmt list p6m7g8
   gh-repo-mgmt list p6m7g8 --type=public
@@ -95,6 +97,7 @@ p6main() {
   create) ;;
   delete) ;;
   rename) ;;
+  transfer) ;;
   show) ;;
   list) ;;
   update) ;;
@@ -293,6 +296,58 @@ p6_cmd_rename() {
   _gh --method PATCH "repos/${owner}/${repo}" --input <(echo "$payload")
 
   echo "Repository renamed successfully: $owner/$repo -> $owner/$new_name" >&2
+}
+
+######################################################################
+#<
+#
+# Function: p6_cmd_transfer(name, new_owner)
+#
+#  Args:
+#	name - repository in owner/repo form
+#	new_owner - new owner (user or organization)
+#
+#  Environment:	 POST GET
+#>
+######################################################################
+p6_cmd_transfer() {
+  local name="$1"
+  local new_owner="$2"
+
+  if [ -z "$name" ] || [ -z "$new_owner" ]; then
+    p6_usage 1 "Usage: gh-repo-mgmt transfer <owner>/<repo> <new-owner>"
+  fi
+
+  local owner="${name%%/*}"
+  local repo="${name##*/}"
+
+  # Check if repository exists under current owner
+  if ! _gh --method GET "repos/${owner}/${repo}" 2>/dev/null | grep -q "\"name\""; then
+    echo "Error: Repository $owner/$repo does not exist" >&2
+    return 1
+  fi
+
+  # Check current owner (idempotent)
+  local current_owner
+  current_owner=$(_gh --method GET "repos/${owner}/${repo}" 2>/dev/null | grep -o "\"owner\":{[^}]*\"login\":\"[^\"]*\"" | grep -o "\"login\":\"[^\"]*\"" | cut -d'"' -f4)
+
+  if [ "$current_owner" = "$new_owner" ]; then
+    echo "Repository $owner/$repo already owned by '$new_owner' (idempotent)" >&2
+    return 0
+  fi
+
+  # Check if new owner exists
+  if ! gh api "users/${new_owner}" 2>/dev/null | grep -q "\"login\""; then
+    echo "Error: User or organization '$new_owner' does not exist" >&2
+    return 1
+  fi
+
+  echo "Transferring repository $owner/$repo to $new_owner" >&2
+
+  local payload="{\"new_owner\":\"$new_owner\"}"
+  _gh --method POST "repos/${owner}/${repo}/transfer" --input <(echo "$payload")
+
+  echo "Repository transferred successfully: $owner/$repo -> $new_owner/$repo" >&2
 }
 
 ######################################################################
