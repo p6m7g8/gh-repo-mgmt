@@ -24,6 +24,7 @@ Usage:
   gh-repo-mgmt [options] <cmd> [<args>...]
 
 Commands:
+  create <name> [options]          Create a repository (idempotent)
   show [<name>]                    Show a repository setup (defaults to current repo)
   list <owner> [--type=<type>]     List repositories for a user/org
   update <name> <what>=<value>     Update a repository setup
@@ -33,7 +34,17 @@ Commands:
 Options:
   -h                             Show this help message
 
+Create Options:
+  --public                       Create as public repository (default)
+  --private                      Create as private repository
+  --description=<text>           Repository description
+  --homepage=<url>               Repository homepage URL
+  --disable-wiki                 Disable wiki
+  --disable-issues               Disable issues
+  --disable-projects             Disable projects
+
 Examples:
+  gh-repo-mgmt create p6m7g8/new-repo --private --description="My new repo"
   gh-repo-mgmt show Gollucci/gh-repo-mgmt
   gh-repo-mgmt list p6m7g8
   gh-repo-mgmt list p6m7g8 --type=public
@@ -77,6 +88,7 @@ p6main() {
   # normalize command names (support both hyphen and underscore variants)
   case $cmd in
   help) p6_usage ;;
+  create) ;;
   show) ;;
   list) ;;
   update) ;;
@@ -99,6 +111,97 @@ p6main() {
 _gh() {
 
   gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "$@"
+}
+
+######################################################################
+#<
+#
+# Function: p6_cmd_create(name, options...)
+#
+#  Args:
+#	name - repository in owner/repo form
+#	options - optional flags (--private, --public, --description=, etc.)
+#
+#  Environment:	 POST GET
+#>
+######################################################################
+p6_cmd_create() {
+  local name="$1"
+  shift 1
+
+  if [ -z "$name" ]; then
+    p6_usage 1 "Usage: gh-repo-mgmt create <owner>/<repo> [options]"
+  fi
+
+  local owner="${name%%/*}"
+  local repo="${name##*/}"
+
+  # Check if repository already exists (idempotent)
+  if _gh --method GET "repos/${owner}/${repo}" 2>/dev/null | grep -q "\"name\""; then
+    echo "Repository $owner/$repo already exists (idempotent)" >&2
+    _gh --method GET "repos/${owner}/${repo}" | grep -E '"name"|"private"|"description"'
+    return 0
+  fi
+
+  # Parse options
+  local visibility="public"
+  local description=""
+  local homepage=""
+  local has_issues="true"
+  local has_wiki="true"
+  local has_projects="true"
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --private)
+        visibility="private"
+        ;;
+      --public)
+        visibility="public"
+        ;;
+      --description=*)
+        description="${1#--description=}"
+        ;;
+      --homepage=*)
+        homepage="${1#--homepage=}"
+        ;;
+      --disable-wiki)
+        has_wiki="false"
+        ;;
+      --disable-issues)
+        has_issues="false"
+        ;;
+      --disable-projects)
+        has_projects="false"
+        ;;
+      *)
+        echo "Unknown option: $1" >&2
+        p6_usage 1
+        ;;
+    esac
+    shift
+  done
+
+  # Build payload
+  local payload="{"
+  payload+="\"name\":\"$repo\""
+  payload+=",\"private\":$([ "$visibility" = "private" ] && echo "true" || echo "false")"
+  payload+=",\"has_issues\":$has_issues"
+  payload+=",\"has_wiki\":$has_wiki"
+  payload+=",\"has_projects\":$has_projects"
+  [ -n "$description" ] && payload+=",\"description\":\"$description\""
+  [ -n "$homepage" ] && payload+=",\"homepage\":\"$homepage\""
+  payload+="}"
+
+  echo "Creating repository $owner/$repo with visibility=$visibility" >&2
+  echo "Payload: $payload" >&2
+
+  # Determine API endpoint (user vs org)
+  if gh api "users/${owner}" 2>/dev/null | grep -q "\"type\":\"Organization\""; then
+    _gh --method POST "orgs/${owner}/repos" --input <(echo "$payload")
+  else
+    _gh --method POST "user/repos" --input <(echo "$payload")
+  fi
 }
 
 ######################################################################
