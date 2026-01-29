@@ -2,7 +2,7 @@
 
 ## Table of Contents
 
-- [P6’s POSIX.2: gh-repo-mgmt](#p6s-posix2-gh-repo-mgmt)
+- [P6's POSIX.2: gh-repo-mgmt](#p6s-posix2-gh-repo-mgmt)
   - [Table of Contents](#table-of-contents)
   - [Badges](#badges)
   - [Summary](#summary)
@@ -10,7 +10,6 @@
   - [Usage](#usage)
     - [Commands](#commands)
     - [Options](#options)
-    - [Aliases](#aliases)
     - [Functions](#functions)
   - [Examples](#examples)
   - [Hierarchy](#hierarchy)
@@ -68,33 +67,33 @@ gh repo-mgmt [options] <cmd> [<args>...]
 
 ### Commands
 
-| Command                            | Description                                      |
-|----------------------------------- | ------------------------------------------------ |
-| `transfer <name> <new-owner>`      | Transfer repository ownership (idempotent)       |
-| `ensure <name> [options]`          | Ensure repository exists with settings (idempotent) |
+| Command                       | Description                                             |
+| ----------------------------- | ------------------------------------------------------- |
+| `transfer <name> <new-owner>` | Transfer repository ownership (idempotent)              |
+| `ensure <name> [options]`     | Ensure repository exists with settings (idempotent)     |
 
 ### Native `gh repo` Commands
 
 For other operations, use the native GitHub CLI:
 
-| Command                          | Description                 |
-|--------------------------------- | --------------------------- |
-| `gh repo create`                 | Create a repository         |
-| `gh repo delete`                 | Delete a repository         |
-| `gh repo rename`                 | Rename a repository         |
-| `gh repo archive`                | Archive a repository        |
-| `gh repo unarchive`              | Unarchive a repository      |
-| `gh repo edit`                   | Update repository settings  |
-| `gh repo edit --add-topic`       | Add topics                  |
-| `gh repo edit --remove-topic`    | Remove topics               |
-| `gh repo list`                   | List repositories           |
-| `gh repo view`                   | Show repository details     |
+| Command                        | Description                |
+| ------------------------------ | -------------------------- |
+| `gh repo create`               | Create a repository        |
+| `gh repo delete`               | Delete a repository        |
+| `gh repo rename`               | Rename a repository        |
+| `gh repo archive`              | Archive a repository       |
+| `gh repo unarchive`            | Unarchive a repository     |
+| `gh repo edit`                 | Update repository settings |
+| `gh repo edit --add-topic`     | Add topics                 |
+| `gh repo edit --remove-topic`  | Remove topics              |
+| `gh repo list`                 | List repositories          |
+| `gh repo view`                 | Show repository details    |
 
 ### Options
 
-| Option  | Description       |
-| --------|------------------ |
-| `-h`    | Show help message |
+| Option | Description       |
+| ------ | ----------------- |
+| `-h`   | Show help message |
 
 ---
 
@@ -115,11 +114,11 @@ For other operations, use the native GitHub CLI:
 
 ### Functions
 
-| Function                          | Purpose                                          |
-| ----------------------------------|------------------------------------------------- |
-| `p6_usage()`                      | Prints help text                                 |
-| `p6_cmd_transfer(name, owner)`    | Transfers repository to new owner (idempotent)   |
-| `p6_cmd_ensure(name, ...)`        | Creates or updates repository (idempotent)       |
+| Function                       | Purpose                                        |
+| ------------------------------ | ---------------------------------------------- |
+| `p6_usage()`                   | Prints help text                               |
+| `p6_cmd_transfer(name, owner)` | Transfers repository to new owner (idempotent) |
+| `p6_cmd_ensure(name, ...)`     | Creates or updates repository (idempotent)     |
 
 ---
 
